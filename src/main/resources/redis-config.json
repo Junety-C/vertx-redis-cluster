@@ -1,0 +1,33 @@
+{
+    "redis-cluster": {
+        "config" : [{
+            "port": 17001,
+            "host": "127.0.0.1"
+        }, {
+            "port": 17002,
+            "host": "127.0.0.1"
+        }, {
+            "port": 17003,
+            "host": "127.0.0.1"
+        }
+    ]},
+    "redis-standalone": {
+        "config" : {
+            "db": 0,
+            "port": 6379,
+            "host": "127.0.0.1"
+        }
+    },
+    "standalone_slave" : {
+        "config" : [{
+            "port": 16381,
+            "host": "127.0.0.1"
+        }, {
+            "port": 16382,
+            "host": "127.0.0.1"
+        }, {
+            "port": 16383,
+            "host": "127.0.0.1"
+        }]
+    }
+}
