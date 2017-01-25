@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Created by Caijt on 2017/1/23.
  */
-public class RedisClusterConnection {
+class RedisClusterConnection {
 
     private final Context context;
     private final RedisClusterOptions config;

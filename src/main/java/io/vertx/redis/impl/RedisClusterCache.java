@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * Created by Caijt on 2017/1/23.
  */
-public class RedisClusterCache {
+class RedisClusterCache {
 
     private final Vertx vertx;
     private final Map<String, RedisConnection> nodesCache;
