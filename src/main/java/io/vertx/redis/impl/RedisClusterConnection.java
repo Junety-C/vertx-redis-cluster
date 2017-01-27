@@ -3,7 +3,9 @@ package io.vertx.redis.impl;
 import io.vertx.core.*;
 import io.vertx.redis.RedisClusterOptions;
 
+import java.nio.charset.Charset;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -22,6 +24,8 @@ class RedisClusterConnection {
         DISCONNECTED,
         CONNECTING,
         CONNECTED,
+        RECONNECTING,
+        DISCONNECTING,
         ERROR
     }
 
@@ -59,13 +63,38 @@ class RedisClusterConnection {
     }
 
     void disconnect(Handler<AsyncResult<Void>> closeHandler) {
+        final Command<Void> cmd = new Command<>(context, RedisCommand.QUIT, null, Charset.defaultCharset(), ResponseTransform.NONE, Void.class);
+        final AtomicInteger cnt = new AtomicInteger(0);
         switch (state.get()) {
             case CONNECTING:
-                // eventually will become connected
-            case CONNECTED:
-                // TODO disconnect
-
+                cmd.handler(v -> {
+                    runOnContext(v0 -> {
+                        state.compareAndSet(State.CONNECTED, State.DISCONNECTING);
+                        if (cnt.incrementAndGet() == redisClusterClient.getConnectionNumber()) {
+                            clearQueue(pending, "Connection closed");
+                            state.set(State.DISCONNECTED);
+                            closeHandler.handle(Future.succeededFuture());
+                        }
+                    });
+                });
+                pending.add(new ClusterCommand(-1, cmd));
                 break;
+            case CONNECTED:
+                if(state.compareAndSet(State.CONNECTED, State.DISCONNECTING)) {
+                    int connectionNumber = redisClusterClient.getConnectionNumber();
+                    cmd.handler(v -> {
+                        runOnContext(v0 -> {
+                            if (cnt.incrementAndGet() == connectionNumber) {
+                                clearQueue(pending, "Connection closed");
+                                state.set(State.DISCONNECTED);
+                                closeHandler.handle(Future.succeededFuture());
+                            }
+                        });
+                    });
+                    redisClusterClient.sendAll(cmd);
+                }
+                break;
+            case DISCONNECTING:
             case ERROR:
                 // eventually will become DISCONNECTED
             case DISCONNECTED:
@@ -88,6 +117,7 @@ class RedisClusterConnection {
                     break;
                 case CONNECTING:
                 case ERROR:
+                case DISCONNECTING:
                 case DISCONNECTED:
                     pending.add(clusterCommand);
                     break;
@@ -101,7 +131,11 @@ class RedisClusterConnection {
             if (state.compareAndSet(State.CONNECTING, State.CONNECTED)) {
                 // we are connected so clean up the pending queue
                 while ((clusterCommand = pending.poll()) != null) {
-                    redisClusterClient.send(clusterCommand);
+                    if(clusterCommand.getSlot() == -1) {
+                        redisClusterClient.sendAll(clusterCommand.getCommand());
+                    } else {
+                        redisClusterClient.send(clusterCommand);
+                    }
                 }
             }
         });

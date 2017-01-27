@@ -28,11 +28,6 @@ public class RedisClusterImpl extends AbstractRedisClusterClient {
     }
 
     @Override
-    public void close(Handler<AsyncResult<Void>> handler) {
-        RedisClusterImpl.this.close(handler);
-    }
-
-    @Override
     public RedisCluster append(String key, String value, Handler<AsyncResult<Long>> handler) {
         sendLong(APPEND, toPayload(key, value), RedisClusterCRC16.getSlot(key), handler);
         return this;

@@ -1,7 +1,6 @@
 package io.vertx.redis.impl;
 
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
@@ -11,7 +10,6 @@ import io.vertx.redis.RedisClusterOptions;
 
 import java.nio.charset.Charset;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by caijt on 2017/1/24.
@@ -36,14 +34,7 @@ public abstract class AbstractRedisClusterClient implements RedisCluster {
 
     @Override
     public synchronized void close(Handler<AsyncResult<Void>> handler) {
-        final AtomicInteger cnt = new AtomicInteger(0);
-
-        final Handler<AsyncResult<Void>> cb = v -> {
-            if (cnt.incrementAndGet() == redisCluster.getConnectionNumber()) {
-                handler.handle(Future.succeededFuture());
-            }
-        };
-        redisCluster.disconnect(cb);
+        redisCluster.disconnect(handler);
     }
 
     final void sendString(final RedisCommand command, final List<?> args, int slot, final Handler<AsyncResult<String>> resultHandler) {

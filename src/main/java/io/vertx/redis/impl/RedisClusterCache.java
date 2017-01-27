@@ -8,8 +8,7 @@ import io.vertx.redis.RedisClusterOptions;
 import io.vertx.redis.RedisOptions;
 import io.vertx.redis.HostAndPort;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by Caijt on 2017/1/23.
@@ -64,6 +63,13 @@ class RedisClusterCache {
 
     int getNodeNumber() {
         return nodesCache.size();
+    }
+
+    List<RedisConnection> getShuffledNodesPool() {
+        List<RedisConnection> pools = new ArrayList<>();
+        pools.addAll(this.nodesCache.values());
+        Collections.shuffle(pools);
+        return pools;
     }
 
     private HostAndPort generateHostAndPort(JsonArray hostInfo) {

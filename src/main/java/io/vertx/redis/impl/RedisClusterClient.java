@@ -4,6 +4,8 @@ import io.vertx.core.*;
 import io.vertx.redis.RedisClient;
 import io.vertx.redis.RedisClusterOptions;
 
+import java.util.List;
+
 /**
  * Created by caijt on 2017/1/24.
  */
@@ -39,6 +41,13 @@ class RedisClusterClient {
 
     void send(ClusterCommand clusterCommand) {
         cache.getRedis(clusterCommand.getSlot()).send(clusterCommand.getCommand());
+    }
+
+    void sendAll(final Command<?> command) {
+        List<RedisConnection> nodesPool = cache.getShuffledNodesPool();
+        for(RedisConnection connection : nodesPool) {
+            connection.send(command);
+        }
     }
 
     int getConnectionNumber() {
