@@ -80,19 +80,18 @@ class RedisClusterConnection {
                 pending.add(new ClusterCommand(-1, cmd));
                 break;
             case CONNECTED:
-                if(state.compareAndSet(State.CONNECTED, State.DISCONNECTING)) {
-                    int connectionNumber = redisClusterClient.getConnectionNumber();
-                    cmd.handler(v -> {
-                        runOnContext(v0 -> {
-                            if (cnt.incrementAndGet() == connectionNumber) {
-                                clearQueue(pending, "Connection closed");
-                                state.set(State.DISCONNECTED);
-                                closeHandler.handle(Future.succeededFuture());
-                            }
-                        });
+                state.set(State.DISCONNECTING);
+                int connectionNumber = redisClusterClient.getConnectionNumber();
+                cmd.handler(v -> {
+                    runOnContext(v0 -> {
+                        if (cnt.incrementAndGet() == connectionNumber) {
+                            clearQueue(pending, "Connection closed");
+                            state.set(State.DISCONNECTED);
+                            closeHandler.handle(Future.succeededFuture());
+                        }
                     });
-                    redisClusterClient.sendAll(cmd);
-                }
+                });
+                redisClusterClient.sendAll(cmd);
                 break;
             case DISCONNECTING:
             case ERROR:
