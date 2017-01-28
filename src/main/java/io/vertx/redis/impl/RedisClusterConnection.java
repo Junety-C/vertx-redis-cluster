@@ -69,25 +69,26 @@ class RedisClusterConnection {
             case CONNECTING:
                 cmd.handler(v -> {
                     runOnContext(v0 -> {
-                        state.compareAndSet(State.CONNECTED, State.DISCONNECTING);
-                        if (cnt.incrementAndGet() == redisClusterClient.getConnectionNumber()) {
-                            clearQueue(pending, "Connection closed");
-                            state.set(State.DISCONNECTED);
-                            closeHandler.handle(Future.succeededFuture());
+                        if(state.compareAndSet(State.CONNECTED, State.DISCONNECTING) || state.get() == State.DISCONNECTING) {
+                            if (cnt.incrementAndGet() == redisClusterClient.getConnectionNumber()) {
+                                clearQueue(pending, "Connection closed");
+                                state.set(State.DISCONNECTED);
+                                closeHandler.handle(Future.succeededFuture());
+                            }
                         }
                     });
                 });
                 pending.add(new ClusterCommand(-1, cmd));
                 break;
             case CONNECTED:
-                state.set(State.DISCONNECTING);
-                int connectionNumber = redisClusterClient.getConnectionNumber();
                 cmd.handler(v -> {
                     runOnContext(v0 -> {
-                        if (cnt.incrementAndGet() == connectionNumber) {
-                            clearQueue(pending, "Connection closed");
-                            state.set(State.DISCONNECTED);
-                            closeHandler.handle(Future.succeededFuture());
+                        if(state.compareAndSet(State.CONNECTED, State.DISCONNECTING) || state.get() == State.DISCONNECTING) {
+                            if (cnt.incrementAndGet() == redisClusterClient.getConnectionNumber()) {
+                                clearQueue(pending, "Connection closed");
+                                state.set(State.DISCONNECTED);
+                                closeHandler.handle(Future.succeededFuture());
+                            }
                         }
                     });
                 });
