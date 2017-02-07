@@ -1,6 +1,8 @@
 package io.vertx.redis.impl;
 
 import io.vertx.core.*;
+import io.vertx.core.impl.VertxInternal;
+import io.vertx.core.json.JsonObject;
 import io.vertx.redis.RedisClusterOptions;
 
 import java.nio.charset.Charset;
@@ -33,7 +35,14 @@ class RedisClusterConnection {
 
 
     RedisClusterConnection(Vertx vertx, RedisClusterOptions config) {
-        this.context = vertx.getOrCreateContext();
+        Context ctx = Vertx.currentContext();
+        if (ctx == null) {
+            ctx = vertx.getOrCreateContext();
+        } else if (!ctx.isEventLoopContext()) {
+            VertxInternal vi = (VertxInternal) vertx;
+            ctx = vi.createEventLoopContext(null, null, new JsonObject(), Thread.currentThread().getContextClassLoader());
+        }
+        this.context = ctx;
         this.config = config;
         redisClusterClient = new RedisClusterClient(vertx);
     }
@@ -42,17 +51,13 @@ class RedisClusterConnection {
         if (state.compareAndSet(State.DISCONNECTED, State.CONNECTING)) {
             redisClusterClient.connect(config, ar -> {
                 if(ar.failed()) {
-                    runOnContext(v -> {
-                        if(state.compareAndSet(State.CONNECTING, State.ERROR)) {
-                            // clean up any pending command
-                            clearQueue(pending, ar.cause());
-                        }
-                        state.set(State.DISCONNECTED);
-                    });
+                    if(state.compareAndSet(State.CONNECTING, State.ERROR)) {
+                        // clean up any pending command
+                        clearQueue(pending, ar.cause());
+                    }
+                    state.set(State.DISCONNECTED);
                 } else {
-                    runOnContext(v -> {
-                        resendPending();
-                    });
+                    resendPending();
                 }
             });
         }
@@ -68,29 +73,23 @@ class RedisClusterConnection {
         switch (state.get()) {
             case CONNECTING:
                 cmd.handler(v -> {
-                    runOnContext(v0 -> {
-                        if(state.compareAndSet(State.CONNECTED, State.DISCONNECTING) || state.get() == State.DISCONNECTING) {
-                            if (cnt.incrementAndGet() == redisClusterClient.getConnectionNumber()) {
-                                clearQueue(pending, "Connection closed");
-                                state.set(State.DISCONNECTED);
-                                closeHandler.handle(Future.succeededFuture());
-                            }
+                    if(state.compareAndSet(State.CONNECTED, State.DISCONNECTING) || state.get() == State.DISCONNECTING) {
+                        if (cnt.incrementAndGet() == redisClusterClient.getConnectionNumber()) {
+                            clearQueue(pending, "Connection closed");
+                            closeHandler.handle(Future.succeededFuture());
                         }
-                    });
+                    }
                 });
                 pending.add(new ClusterCommand(-1, cmd));
                 break;
             case CONNECTED:
                 cmd.handler(v -> {
-                    runOnContext(v0 -> {
-                        if(state.compareAndSet(State.CONNECTED, State.DISCONNECTING) || state.get() == State.DISCONNECTING) {
-                            if (cnt.incrementAndGet() == redisClusterClient.getConnectionNumber()) {
-                                clearQueue(pending, "Connection closed");
-                                state.set(State.DISCONNECTED);
-                                closeHandler.handle(Future.succeededFuture());
-                            }
+                    if(state.compareAndSet(State.CONNECTED, State.DISCONNECTING) || state.get() == State.DISCONNECTING) {
+                        if (cnt.incrementAndGet() == redisClusterClient.getConnectionNumber()) {
+                            clearQueue(pending, "Connection closed");
+                            closeHandler.handle(Future.succeededFuture());
                         }
-                    });
+                    }
                 });
                 redisClusterClient.sendAll(cmd);
                 break;
@@ -126,23 +125,21 @@ class RedisClusterConnection {
     }
 
     private void resendPending() {
-        runOnContext(v -> {
-            ClusterCommand clusterCommand;
-            if (state.compareAndSet(State.CONNECTING, State.CONNECTED)) {
-                // we are connected so clean up the pending queue
-                while ((clusterCommand = pending.poll()) != null) {
-                    if(clusterCommand.getSlot() == -1) {
-                        redisClusterClient.sendAll(clusterCommand.getCommand());
-                    } else {
-                        redisClusterClient.send(clusterCommand);
-                    }
+        ClusterCommand clusterCommand;
+        if (state.compareAndSet(State.CONNECTING, State.CONNECTED)) {
+            // we are connected so clean up the pending queue
+            while ((clusterCommand = pending.poll()) != null) {
+                if(clusterCommand.getSlot() == -1) {
+                    redisClusterClient.sendAll(clusterCommand.getCommand());
+                } else {
+                    redisClusterClient.send(clusterCommand);
                 }
             }
-        });
+        }
     }
 
     private void runOnContext(Handler<Void> handler) {
-        if (Vertx.currentContext() == context) {
+        if (Vertx.currentContext() == context && Context.isOnEventLoopThread()) {
             handler.handle(null);
         } else {
             context.runOnContext(handler);
