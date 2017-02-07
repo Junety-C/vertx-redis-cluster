@@ -51,7 +51,7 @@ public class RedisManager {
         List redisClientList = (List) pool.get(name);
         if(redisClientList == null) {
             JsonObject config = redisConfig.getJsonObject(name);
-            createRedisCluster(name, config.getJsonArray(REDIS_CONFIG));
+            createRedisClientList(name, config.getJsonArray(REDIS_CONFIG));
             redisClientList = (List) pool.get(name);
         }
         return (RedisClient) redisClientList.get(index);
@@ -64,7 +64,7 @@ public class RedisManager {
         List redisClientList = (List) pool.get(name);
         if(redisClientList == null) {
             JsonObject config = redisConfig.getJsonObject(name);
-            createRedisCluster(name, config.getJsonArray(REDIS_CONFIG));
+            createRedisClientList(name, config.getJsonArray(REDIS_CONFIG));
             redisClientList = (List) pool.get(name);
         }
         int index = random.nextInt(redisClientList.size());
