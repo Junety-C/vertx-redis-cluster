@@ -36,6 +36,13 @@ class RedisClusterCRC16 {
             0x6E17, 0x7E36, 0x4E55, 0x5E74, 0x2E93, 0x3EB2, 0x0ED1, 0x1EF0};
 
     static int getSlot(String key) {
+        int s = key.indexOf("{");
+        if(s > -1) {
+            int e = key.indexOf("}", s + 1);
+            if(e > -1 && e != s + 1) {
+                key = key.substring(s + 1, e);
+            }
+        }
         return getCRC16(key) & 16383;
     }
 
