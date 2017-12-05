@@ -46,6 +46,39 @@ class RedisClusterCRC16 {
         return getCRC16(key) & 16383;
     }
 
+    public static int getSlot(byte[] key) {
+        return getCRC16(key) & 16383;
+    }
+
+    public static int getCRC16(byte[] key) {
+        int s = -1;
+        int e = -1;
+        boolean sFound = false;
+        for (int i = 0; i < key.length; i++) {
+            if (key[i] == '{' && !sFound) {
+                s = i;
+                sFound = true;
+            }
+            if (key[i] == '}' && sFound) {
+                e = i;
+                break;
+            }
+        }
+        if (s > -1 && e > -1 && e != s + 1) {
+            return getCRC16(key, s + 1, e) & (16384 - 1);
+        }
+        return getCRC16(key, 0, key.length) & (16384 - 1);
+    }
+
+    private static int getCRC16(byte[] bytes, int s, int e) {
+        int crc = 0x0000;
+
+        for (int i = s; i < e; i++) {
+            crc = ((crc << 8) ^ LOOKUP_TABLE[((crc >>> 8) ^ (bytes[i] & 0xFF)) & 0xFF]);
+        }
+        return crc & 0xFFFF;
+    }
+
     private static int getCRC16(String key) {
         try {
             byte[] bytesKey = key.getBytes("UTF-8");

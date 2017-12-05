@@ -22,8 +22,9 @@ public class RedisClusterExample extends AbstractVerticle {
 
         RedisCluster redisCluster = RedisCluster.create(vertx, options);
 
-        redisCluster.get("hello", ar -> {
-            System.out.println(ar.result());
+        redisCluster.get("6212", ar -> {
+            System.out.println("result:" + ar.result());
+            System.out.println("result:" + ar.cause());
         });
     }
 }

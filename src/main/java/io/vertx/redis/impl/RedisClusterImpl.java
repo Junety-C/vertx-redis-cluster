@@ -541,6 +541,72 @@ public class RedisClusterImpl extends AbstractRedisClusterClient {
         return this;
     }
 
+    @Override
+    public RedisCluster hget(byte[] key, byte[] field, Handler<AsyncResult<String>> handler) {
+        sendString(HGET, toPayload(key, field), RedisClusterCRC16.getSlot(key), handler);
+        return this;
+    }
+
+    @Override
+    public RedisCluster hmget(byte[] key, List<byte[]> fields, Handler<AsyncResult<JsonArray>> handler) {
+        sendJsonArray(HMGET, toPayload(key, fields), RedisClusterCRC16.getSlot(key), handler);
+        return this;
+    }
+
+    @Override
+    public RedisCluster smembers(byte[] key, Handler<AsyncResult<JsonArray>> handler) {
+        sendJsonArray(SMEMBERS, toPayload((Object) key), RedisClusterCRC16.getSlot(key), handler);
+        return this;
+    }
+
+    @Override
+    public RedisCluster sismember(byte[] key, byte[] member, Handler<AsyncResult<Long>> handler) {
+        sendLong(SISMEMBER, toPayload(key, member), RedisClusterCRC16.getSlot(key), handler);
+        return this;
+    }
+
+    @Override
+    public RedisCluster hincrby(byte[] key, byte[] field, long increment, Handler<AsyncResult<String>> handler) {
+        sendString(HINCRBY, toPayload(key, field, increment), RedisClusterCRC16.getSlot(key), handler);
+        return this;
+    }
+
+    @Override
+    public RedisCluster zrange(byte[] key, long start, long stop, Handler<AsyncResult<JsonArray>> handler) {
+        sendJsonArray(ZRANGE, toPayload(key, start, stop), RedisClusterCRC16.getSlot(key), handler);
+        return this;
+    }
+
+    @Override
+    public RedisCluster zadd(byte[] key, double score, byte[] member, Handler<AsyncResult<Long>> handler) {
+        sendLong(ZADD, toPayload(key, score, member), RedisClusterCRC16.getSlot(key), handler);
+        return this;
+    }
+
+    @Override
+    public RedisCluster zremrangebyscore(byte[] key, double start, double end, Handler<AsyncResult<Long>> handler) {
+        sendLong(ZREMRANGEBYSCORE, toPayload(key, start, end), RedisClusterCRC16.getSlot(key), handler);
+        return this;
+    }
+
+    @Override
+    public RedisCluster scard(byte[] key, Handler<AsyncResult<Long>> handler) {
+        sendLong(SCARD, toPayload((Object) key), RedisClusterCRC16.getSlot(key), handler);
+        return this;
+    }
+
+    @Override
+    public RedisCluster zrangebyscore(byte[] key, double min, double max, RangeLimitOptions options, Handler<AsyncResult<JsonArray>> handler) {
+        sendJsonArray(ZRANGEBYSCORE, toPayload(key, min, max, options != null ? options.toJsonArray() : null), RedisClusterCRC16.getSlot(key), handler);
+        return this;
+    }
+
+    @Override
+    public RedisCluster expire(byte[] key, int seconds, Handler<AsyncResult<String>> handler) {
+        sendString(EXPIRE, toPayload(key, seconds), RedisClusterCRC16.getSlot(key), handler);
+        return this;
+    }
+
     private static List<?> toPayload(Object ... parameters) {
         List<Object> result = new ArrayList<>(parameters.length);
 

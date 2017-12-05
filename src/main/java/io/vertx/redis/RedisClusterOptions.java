@@ -34,8 +34,6 @@ public class RedisClusterOptions {
                 .setAuth(redisOptions.getAuth())
                 .setEncoding(redisOptions.getEncoding())
                 .setSelect(redisOptions.getSelect())
-                .setTcpKeepAlive(redisOptions.isTcpKeepAlive())
-                .setTcpNoDelay(redisOptions.isTcpNoDelay())
                 .setBinary(redisOptions.isBinary());
     }
 
@@ -60,8 +58,6 @@ public class RedisClusterOptions {
                 .setAuth(redisOptions.getAuth())
                 .setEncoding(redisOptions.getEncoding())
                 .setSelect(redisOptions.getSelect())
-                .setTcpKeepAlive(redisOptions.isTcpKeepAlive())
-                .setTcpNoDelay(redisOptions.isTcpNoDelay())
                 .setBinary(redisOptions.isBinary())
                 .setHost(nodes.get(index).getHost())
                 .setPort(nodes.get(index).getPort());

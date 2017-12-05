@@ -14,7 +14,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
-        <vertx.version>3.3.3</vertx.version>
+        <vertx.version>3.5.0</vertx.version>
     </properties>
 
     <dependencies>

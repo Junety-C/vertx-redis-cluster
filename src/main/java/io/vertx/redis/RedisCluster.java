@@ -192,4 +192,26 @@ public interface RedisCluster {
     RedisCluster zrevrank(String key, String member, Handler<AsyncResult<Long>> handler);
 
     RedisCluster zscore(String key, String member, Handler<AsyncResult<String>> handler);
+
+    RedisCluster hget(byte[] key, byte[] field, Handler<AsyncResult<String>> handler);
+
+    RedisCluster hmget(byte[] key, List<byte[]> fields, Handler<AsyncResult<JsonArray>> handler);
+
+    RedisCluster smembers(byte[] key, Handler<AsyncResult<JsonArray>> handler);
+
+    RedisCluster sismember(byte[] key, byte[] member, Handler<AsyncResult<Long>> handler);
+
+    RedisCluster hincrby(byte[] key, byte[] field, long increment, Handler<AsyncResult<String>> handler);
+
+    RedisCluster zrange(byte[] key, long start, long stop, Handler<AsyncResult<JsonArray>> handler);
+
+    RedisCluster zadd(byte[] key, double score, byte[] member, Handler<AsyncResult<Long>> handler);
+
+    RedisCluster zremrangebyscore(final byte[] key, final double start, final double end, Handler<AsyncResult<Long>> handler);
+
+    RedisCluster scard(final byte[] key, Handler<AsyncResult<Long>> handler);
+
+    RedisCluster zrangebyscore(final byte[] key, double min, double max, RangeLimitOptions options, Handler<AsyncResult<JsonArray>> handler);
+
+    RedisCluster expire(byte[] key, int seconds, Handler<AsyncResult<String>> handler);
 }
