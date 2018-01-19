@@ -19,8 +19,8 @@ class RedisClusterCache {
 
     private final Vertx vertx;
     private final Context context;
-    private final Map<String, RedisConnection> nodesCache;
-    private final Map<Integer, RedisConnection> slotsCache;
+    private Map<String, RedisConnection> nodesCache;
+    private Map<Integer, RedisConnection> slotsCache;
 
     RedisClusterCache(Vertx vertx) {
         this.vertx = vertx;
@@ -37,31 +37,22 @@ class RedisClusterCache {
         return nodesCache.get(nodeKey);
     }
 
-    RedisConnection getRedis(HostAndPort hostAndPort) {
-        return nodesCache.get(getNodeKey(hostAndPort));
+    RedisConnection getOrCreateRedis(String nodeKey, RedisClusterOptions config) {
+        RedisConnection redisConnection = nodesCache.get(nodeKey);
+        if (redisConnection == null) {
+            RedisOptions options = config.cloneRedisOptions();
+            String[] part = nodeKey.split(":");
+            options.setHost(part[0]);
+            options.setPort(Integer.parseInt(part[1]));
+            setNodeIfNotExist(options);
+        }
+        return nodesCache.get(nodeKey);
     }
 
     void discoverClusterNodesAndSlots(RedisClient client, RedisClusterOptions config, Future<Void> future) {
-        this.nodesCache.clear();
-        discoverClusterSlots(client, config, future);
-    }
-
-    void discoverClusterSlots(RedisClient client, RedisClusterOptions config, Future<Void> future) {
-        this.slotsCache.clear();
         client.clusterSlots(ar -> {
             if(ar.succeeded()) {
-                JsonArray slotInfoArray = ar.result();
-                for(int i = 0; i < slotInfoArray.size(); i++) {
-                    JsonArray slotInfo = slotInfoArray.getJsonArray(i);
-                    if(slotInfo.size() <= 2) continue;
-                    JsonArray hostInfo = slotInfo.getJsonArray(2);
-                    if(hostInfo.size() < 2) continue;
-                    HostAndPort hostAndPort = generateHostAndPort(hostInfo);
-                    RedisOptions options = config.cloneRedisOptions();
-                    options.setHost(hostAndPort.getHost());
-                    options.setPort(hostAndPort.getPort());
-                    assignSlotsToNode(slotInfo, options);
-                }
+                handleSlotCache(ar.result(), config);
                 future.complete();
             } else {
                 future.fail(ar.cause());
@@ -69,29 +60,34 @@ class RedisClusterCache {
         });
     }
 
-    void discoverClusterSlots(RedisConnection connection, RedisClusterOptions config, Future<Void> future) {
-        this.slotsCache.clear();
-        final Command<JsonArray> cmd = new Command<>(this.context, RedisCommand.CLUSTER_SLOTS, null,
+    void discoverClusterNodesAndSlots(RedisConnection connection, RedisClusterOptions config, Future<Void> future) {
+        final Command<JsonArray> cmd = new Command<>(Vertx.currentContext(), RedisCommand.CLUSTER_SLOTS, null,
                 Charset.defaultCharset(), ResponseTransform.NONE, JsonArray.class).handler(ar -> {
             if(ar.succeeded()) {
-                JsonArray slotInfoArray = ar.result();
-                for(int i = 0; i < slotInfoArray.size(); i++) {
-                    JsonArray slotInfo = slotInfoArray.getJsonArray(i);
-                    if(slotInfo.size() <= 2) continue;
-                    JsonArray hostInfo = slotInfo.getJsonArray(2);
-                    if(hostInfo.size() < 2) continue;
-                    HostAndPort hostAndPort = generateHostAndPort(hostInfo);
-                    RedisOptions options = config.cloneRedisOptions();
-                    options.setHost(hostAndPort.getHost());
-                    options.setPort(hostAndPort.getPort());
-                    assignSlotsToNode(slotInfo, options);
-                }
+                handleSlotCache(ar.result(), config);
                 future.complete();
             } else {
                 future.fail(ar.cause());
             }
         });
         connection.send(cmd);
+    }
+
+    void handleSlotCache(JsonArray slotInfoArray, RedisClusterOptions config) {
+        this.slotsCache.clear();
+        Map<String, RedisConnection> newNodesCache = new HashMap<>();
+        for(int i = 0; i < slotInfoArray.size(); i++) {
+            JsonArray slotInfo = slotInfoArray.getJsonArray(i);
+            if(slotInfo.size() <= 2) continue;
+            JsonArray hostInfo = slotInfo.getJsonArray(2);
+            if(hostInfo.size() < 2) continue;
+            HostAndPort hostAndPort = generateHostAndPort(hostInfo);
+            RedisOptions options = config.cloneRedisOptions();
+            options.setHost(hostAndPort.getHost());
+            options.setPort(hostAndPort.getPort());
+            assignSlotsToNode(slotInfo, options, newNodesCache);
+        }
+        this.nodesCache = newNodesCache;
     }
 
     void renewClusterSlots(RedisClusterOptions config, Handler<AsyncResult<Void>> handler) {
@@ -102,7 +98,7 @@ class RedisClusterCache {
         if(index < connections.size()) {
             RedisConnection connection = connections.get(index);
             Future<Void> future = Future.future();
-            this.discoverClusterSlots(connection, config, future.setHandler(ar -> {
+            this.discoverClusterNodesAndSlots(connection, config, future.setHandler(ar -> {
                 // if current redis connection error, try the next one
                 if(ar.failed()) {
                     renewClusterSlots(connections, index + 1, config, handler);
@@ -130,13 +126,14 @@ class RedisClusterCache {
         return new HostAndPort(hostInfo.getString(0), hostInfo.getInteger(1));
     }
 
-    private void assignSlotsToNode(JsonArray slotInfo, RedisOptions options) {
+    private void assignSlotsToNode(JsonArray slotInfo, RedisOptions options, Map<String, RedisConnection> newNodesCache) {
         RedisConnection redis = nodesCache.get(getNodeKey(options));
 
         if(redis == null) {
             setNodeIfNotExist(options);
             redis = nodesCache.get(getNodeKey(options));
         }
+        newNodesCache.put(getNodeKey(options), redis);
 
         int begin = slotInfo.getInteger(0);
         int end = slotInfo.getInteger(1);

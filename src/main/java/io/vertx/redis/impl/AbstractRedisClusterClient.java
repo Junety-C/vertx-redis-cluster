@@ -27,15 +27,7 @@ public abstract class AbstractRedisClusterClient implements RedisCluster {
         this.charset = Charset.forName(encoding);
         this.binaryCharset = Charset.forName("iso-8859-1");
         this.baseAddress = config.getRedisOptions().getAddress();
-        this.redisCluster = new RedisClusterConnection(vertx, config, 0);
-    }
-
-    AbstractRedisClusterClient(Vertx vertx, RedisClusterOptions config, long timeout) {
-        this.encoding = config.getRedisOptions().getEncoding();
-        this.charset = Charset.forName(encoding);
-        this.binaryCharset = Charset.forName("iso-8859-1");
-        this.baseAddress = config.getRedisOptions().getAddress();
-        this.redisCluster = new RedisClusterConnection(vertx, config, timeout);
+        this.redisCluster = new RedisClusterConnection(vertx, config);
     }
 
     @Override
@@ -66,7 +58,7 @@ public abstract class AbstractRedisClusterClient implements RedisCluster {
     final <T> void send(final RedisCommand command, final List<?> redisArgs, int slot, final Class<T> returnType,
                         final boolean binary, final Handler<AsyncResult<T>> resultHandler) {
 
-        final Command<T> cmd = new Command<>(Vertx.currentContext(), command, redisArgs, binary ? binaryCharset : charset, getResponseTransformFor(command), returnType).handler(resultHandler);
+        final Command<T> cmd = new Command<>(Vertx.currentContext(), command, redisArgs, binary ? binaryCharset : charset, getResponseTransformFor(command), returnType);
         redisCluster.send(new ClusterCommand<>(slot, cmd, resultHandler));
     }
 

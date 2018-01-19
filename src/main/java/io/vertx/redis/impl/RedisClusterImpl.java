@@ -420,7 +420,7 @@ public class RedisClusterImpl extends AbstractRedisClusterClient {
     @Override
     public RedisCluster zaddMany(String key, Map<String, Double> members, Handler<AsyncResult<Long>> handler) {
         // flip from <String, Double> to <Double, String> when wrapping
-        Stream flipped = members.entrySet().stream().map(e -> new Object[] { e.getValue(), e.getKey() });
+        Stream flipped = members.entrySet().stream().map(e -> new Object[]{e.getValue(), e.getKey()});
         sendLong(ZADD, toPayload(key, flipped), RedisClusterCRC16.getSlot(key), handler);
         return this;
     }
@@ -607,10 +607,10 @@ public class RedisClusterImpl extends AbstractRedisClusterClient {
         return this;
     }
 
-    private static List<?> toPayload(Object ... parameters) {
+    private static List<?> toPayload(Object... parameters) {
         List<Object> result = new ArrayList<>(parameters.length);
 
-        for (Object param: parameters) {
+        for (Object param : parameters) {
             // unwrap
             if (param instanceof JsonArray) {
                 param = ((JsonArray) param).getList();

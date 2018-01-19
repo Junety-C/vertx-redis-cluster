@@ -46,11 +46,11 @@ class RedisClusterCRC16 {
         return getCRC16(key) & 16383;
     }
 
-    public static int getSlot(byte[] key) {
+    static int getSlot(byte[] key) {
         return getCRC16(key) & 16383;
     }
 
-    public static int getCRC16(byte[] key) {
+    private static int getCRC16(byte[] key) {
         int s = -1;
         int e = -1;
         boolean sFound = false;
