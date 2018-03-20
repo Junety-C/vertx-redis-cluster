@@ -201,6 +201,7 @@ class RedisClusterConnection {
                     redisConnection.send(clusterCommand.getCommand());
                 } else {
                     // other ERROR
+                    renewSlotCache();
                     clusterCommand.getResultHandler().handle(ar);
                 }
             } else {
